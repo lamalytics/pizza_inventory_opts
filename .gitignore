@@ -1,21 +1,8 @@
-# Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-.eggs/
-dist/
-build/
-.venv/
-venv/
-env/
-
-# Pytest
+*.pyc
 .pytest_cache/
-.coverage
-
-# macOS
+output/*.csv
+output/*.png
+output/*.md
 .DS_Store
-
-# Generated pipeline outputs (reproducible from raw data)
-output/
-reports/
+data/.DS_Store
