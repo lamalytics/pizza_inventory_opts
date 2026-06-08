@@ -204,7 +204,7 @@ class TestReportCSV:
             "Category Prep Guidance",
             "Confidence Distribution",
             "Revenue Opportunity",
-            "Restocking Note",
+            "Restocking & Ordering Workflow",
             "MVP Approach",
             "Analysis Limitations",
             "Future Improvements",
@@ -220,7 +220,8 @@ class TestReportCSV:
     def test_summary_report_assumptions_present(self):
         content = (REPORTS / "summary_report.md").read_text()
         assert "75th percentile" in content
-        assert "4-hour" in content
+        # Lead time is now expressed in days, not hours
+        assert "lead time" in content.lower()
         assert "Conditional mean" in content
 
     def test_summary_report_limitations_present(self):
@@ -230,3 +231,40 @@ class TestReportCSV:
     def test_summary_report_future_improvements_present(self):
         content = (REPORTS / "summary_report.md").read_text()
         assert "Future Improvements" in content
+
+
+# ---------------------------------------------------------------------------
+# Reorder guide
+# ---------------------------------------------------------------------------
+
+
+class TestReorderGuide:
+    @pytest.fixture(scope="session")
+    def reorder_guide(self):
+        return pd.read_csv(REPORTS / "reorder_guide.csv")
+
+    def test_file_exists(self):
+        assert (REPORTS / "reorder_guide.csv").exists()
+
+    def test_one_row_per_pizza_sku(self, reorder_guide):
+        # Each (Pizza Name, Size) pair should appear exactly once.
+        dupes = reorder_guide.duplicated(subset=["Pizza Name", "Size"])
+        assert not dupes.any(), "Duplicate pizza/size rows in reorder_guide.csv"
+
+    def test_reorder_point_positive(self, reorder_guide):
+        col_name = [c for c in reorder_guide.columns if "Reorder Point" in c][0]
+        assert (reorder_guide[col_name] >= 1).all()
+
+    def test_order_qty_gte_reorder_point(self, reorder_guide):
+        # Ordering at least the reorder point per cycle ensures stock is replenished
+        # to at least survival level; order qty is typically higher.
+        rp_col  = [c for c in reorder_guide.columns if "Reorder Point" in c][0]
+        oq_col  = [c for c in reorder_guide.columns if "Order Qty" in c][0]
+        assert (reorder_guide[oq_col] >= reorder_guide[rp_col]).all()
+
+    def test_weekly_total_positive(self, reorder_guide):
+        assert (reorder_guide["Total Units Needed Per Week"] >= 1).all()
+
+    def test_sorted_by_weekly_volume_descending(self, reorder_guide):
+        totals = reorder_guide["Total Units Needed Per Week"].tolist()
+        assert totals == sorted(totals, reverse=True), "Reorder guide should be sorted high→low by weekly volume"
